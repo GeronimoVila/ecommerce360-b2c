@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useStore } from '../../hooks/useStore';
-import { useCartStore } from '../../app/store/cartStore';
+import { useCartStore } from '../../store/cartStore';
 import { createCheckoutIntent } from '../../services/checkout';
 
 export default function CartDrawer() {

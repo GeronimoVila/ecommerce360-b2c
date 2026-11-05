@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { DynamicPricing } from '@/types/product';
+import { DynamicPricing } from '@/src/types/product';
 
 interface PaymentSimulatorProps {
   pricing?: DynamicPricing;

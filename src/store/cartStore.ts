@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { coreFetch } from '../../lib/apiClient';
+import { coreFetch } from '../lib/apiClient';
 
 export interface CartItem {
   productId: string;
@@ -35,6 +35,8 @@ interface CartState {
   openDrawer: () => void;
   closeDrawer: () => void;
 }
+
+let syncRequestId = 0;
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -86,11 +88,13 @@ export const useCartStore = create<CartState>()(
       syncWithBackend: async () => {
         const { items, coupon } = get();
         if (items.length === 0) {
-          set({ subtotal: 0, coupon: null });
+          set({ subtotal: 0, coupon: null, isSyncing: false });
           return;
         }
 
+        const currentRequestId = ++syncRequestId;
         set({ isSyncing: true });
+
         try {
           const payload = items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
           
@@ -99,16 +103,26 @@ export const useCartStore = create<CartState>()(
             { method: 'POST', body: JSON.stringify({ items: payload }) }
           );
 
+          if (currentRequestId !== syncRequestId) return;
+
           if (response.success) {
             set({ items: response.items, subtotal: response.subtotal });
-            if (coupon) await get().applyCoupon(coupon.code);
+            
+            if (coupon) {
+              const couponValid = await get().applyCoupon(coupon.code);
+              if (!couponValid) {
+                set({ coupon: null });
+              }
+            }
           } else {
             set({ items: response.items, subtotal: response.subtotal });
           }
         } catch (error) {
           console.error('Error sincronizando carrito:', error);
         } finally {
-          set({ isSyncing: false });
+          if (currentRequestId === syncRequestId) {
+            set({ isSyncing: false });
+          }
         }
       },
 
@@ -126,6 +140,7 @@ export const useCartStore = create<CartState>()(
             set({ coupon: response.coupon });
             return true;
           }
+          set({ coupon: null });
           return false;
         } catch (error) {
           set({ coupon: null });

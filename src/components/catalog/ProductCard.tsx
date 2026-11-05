@@ -1,4 +1,4 @@
-import { Product } from '@/types/product';
+import { Product } from '@/src/types/product';
 import Link from 'next/link';
 import AddToCartButton from './AddToCartButton'; 
 

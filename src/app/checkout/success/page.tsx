@@ -2,7 +2,7 @@
 
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCartStore } from '@/app/store/cartStore';
+import { useCartStore } from '../../../store/cartStore';
 
 function SuccessContent() {
     const searchParams = useSearchParams();

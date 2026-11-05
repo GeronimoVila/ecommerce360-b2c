@@ -7,6 +7,7 @@ export interface Product {
   is_combo: boolean;
   category_id?: string | null;
   dynamic_pricing?: DynamicPricing;
+  combo_parts?: ComboPart[];
 }
 
 export interface CatalogResponse {
@@ -36,4 +37,13 @@ export interface CashTransferPlan {
 export interface DynamicPricing {
   cash_transfer?: CashTransferPlan;
   credit_card: CreditCardPlan[];
+}
+
+export interface ComboPart {
+  quantity: number;
+  product: {
+    sku: string;
+    name: string;
+    physical_stock: number;
+  };
 }
