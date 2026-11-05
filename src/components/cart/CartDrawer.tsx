@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useStore } from '../../hooks/useStore';
 import { useCartStore } from '../../store/cartStore';
-import { createCheckoutIntent } from '../../services/checkout';
+// import { createCheckoutIntent } from '../../services/checkout'; (Eliminado temporalmente para control estricto de HTTP Status)
 
 export default function CartDrawer() {
+  const router = useRouter();
   const cartState = useStore(useCartStore, (state) => state);
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -45,20 +47,39 @@ export default function CartDrawer() {
           productId: item.productId,
           quantity: item.quantity,
         })),
-        paymentMethod: 'MP' as const,
+        paymentMethod: 'MP'
       };
 
-      const response = await createCheckoutIntent(payload);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/checkout/intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
 
-      if (response.success && response.checkoutUrl) {
-        window.location.href = response.checkoutUrl;
-      } else {
-        setCheckoutError(response.error || 'No se pudo generar la orden de pago.');
-        setIsSubmitting(false);
+      if (response.status === 401) {
+        cartState.closeDrawer();
+        router.push('/checkout/register');
+        return;
       }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar la orden de pago.');
+      }
+
+      const data = await response.json();
+
+      const checkoutUrl = data.init_point || data.checkoutUrl;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error('El servidor no devolvió una URL de pago válida.');
+      }
+
     } catch (error: any) {
       console.error('Error procesando checkout:', error);
-      setCheckoutError('Error de conexión con el servidor de pagos.');
+      setCheckoutError(error.message || 'Error de conexión con el servidor de pagos.');
       setIsSubmitting(false);
     }
   };
@@ -86,14 +107,14 @@ export default function CartDrawer() {
                   <div className="flex items-center space-x-2 mt-2">
                     <button 
                       onClick={() => cartState.updateQuantity(item.productId, item.quantity - 1)} 
-                      className="px-2 bg-gray-200 rounded"
-                      disabled={isSubmitting}
+                      className="px-2 bg-gray-200 rounded disabled:opacity-50"
+                      disabled={isSubmitting || cartState.isSyncing}
                     >-</button>
                     <span className="text-sm">{item.quantity}</span>
                     <button 
                       onClick={() => cartState.updateQuantity(item.productId, item.quantity + 1)} 
-                      className="px-2 bg-gray-200 rounded"
-                      disabled={isSubmitting}
+                      className="px-2 bg-gray-200 rounded disabled:opacity-50"
+                      disabled={isSubmitting || cartState.isSyncing}
                     >+</button>
                   </div>
                   {item.error && <p className="text-red-500 text-xs mt-1">{item.error}</p>}
@@ -102,8 +123,8 @@ export default function CartDrawer() {
                   <p className="font-bold">${item.unitPrice?.toLocaleString('es-AR')}</p>
                   <button 
                     onClick={() => cartState.removeItem(item.productId)} 
-                    className="text-xs text-red-500 mt-2 hover:underline"
-                    disabled={isSubmitting}
+                    className="text-xs text-red-500 mt-2 hover:underline disabled:opacity-50"
+                    disabled={isSubmitting || cartState.isSyncing}
                   >
                     Eliminar
                   </button>

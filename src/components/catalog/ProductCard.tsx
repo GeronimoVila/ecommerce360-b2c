@@ -43,7 +43,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <div className="flex gap-2 mt-5">
-        <AddToCartButton productId={product.id} quantity={1} />
+        <AddToCartButton 
+          productId={product.id} 
+          quantity={1} 
+          maxStock={product.physical_stock}
+          disabled={product.physical_stock <= 0}
+        />
         <Link 
           href={`/productos/${product.id}`} 
           className="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 transition-colors border border-gray-300 rounded hover:bg-gray-50"
