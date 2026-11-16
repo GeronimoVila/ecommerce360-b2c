@@ -20,16 +20,16 @@ function BudgetSkeleton() {
 
 async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: string }> }) {
   const { id } = await paramsPromise;
-  
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
   const endpoint = `${apiUrl}/api/v1/checkout/budget/${id}`;
-  
+
   const res = await fetch(endpoint, { cache: 'no-store' });
 
   if (!res.ok) {
     const errorText = await res.text();
     console.error(`[Fetch Error] Endpoint: ${endpoint} | Status: ${res.status} | Respuesta:`, errorText);
-    
+
     if (res.status === 404 || res.status === 410) {
       return notFound();
     }
@@ -38,13 +38,17 @@ async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: s
 
   const { budget } = await res.json();
 
-  async function processPayment() {
+  async function processPayment(formData: FormData) {
     'use server';
+    const chosenMethod = (formData.get('paymentMethod') as string) || budget.payment_method || 'MOBBEX';
+
     const payRes = await fetch(`${apiUrl}/api/v1/checkout/budget/${id}/pay`, {
       method: 'POST',
-      cache: 'no-store'
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentMethod: chosenMethod }),
+      cache: 'no-store',
     });
-    
+
     const payData = await payRes.json();
 
     if (payData.checkoutUrl) {
@@ -53,6 +57,8 @@ async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: s
       throw new Error(payData.error || 'Fallo al inicializar la pasarela de pago');
     }
   }
+
+  const defaultMethod = budget.payment_method === 'MP' ? 'MP' : 'MOBBEX';
 
   return (
     <div className="max-w-xl mx-auto p-6 bg-white shadow-lg rounded-xl mt-10 border border-gray-100">
@@ -69,7 +75,9 @@ async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: s
               <p className="font-medium text-gray-800">{item.product?.name || 'Producto'}</p>
               <p className="text-xs text-gray-500">Unidades: {item.quantity}</p>
             </div>
-            <span className="font-semibold text-gray-700">${Number(item.unit_price * item.quantity).toFixed(2)}</span>
+            <span className="font-semibold text-gray-700">
+              ${Number(item.unit_price * item.quantity).toFixed(2)}
+            </span>
           </div>
         ))}
       </div>
@@ -83,10 +91,24 @@ async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: s
         ⚠️ Oferta válida hasta el {new Date(budget.expires_at).toLocaleString()}
       </p>
 
-      <form action={processPayment}>
-        <button 
-          type="submit" 
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2"
+      <form action={processPayment} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+            Pasarela de Pago
+          </label>
+          <select
+            name="paymentMethod"
+            defaultValue={defaultMethod}
+            className="w-full border border-gray-300 rounded-lg p-3 text-sm font-semibold text-gray-800 bg-white focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
+          >
+            <option value="MOBBEX">Mobbex (Tarjetas de Crédito / Débito / Cuotas / QR)</option>
+            <option value="MP">Mercado Pago</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2"
         >
           Proceder al Pago Seguro
         </button>

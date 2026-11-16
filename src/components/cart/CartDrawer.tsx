@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../../hooks/useStore';
 import { useCartStore } from '../../store/cartStore';
-// import { createCheckoutIntent } from '../../services/checkout'; (Eliminado temporalmente para control estricto de HTTP Status)
+
+type PaymentGateway = 'MOBBEX' | 'MP';
 
 export default function CartDrawer() {
   const router = useRouter();
   const cartState = useStore(useCartStore, (state) => state);
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState<PaymentGateway>('MOBBEX');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
@@ -47,14 +49,15 @@ export default function CartDrawer() {
           productId: item.productId,
           quantity: item.quantity,
         })),
-        paymentMethod: 'MP'
+        paymentMethod: selectedMethod,
+        ...(cartState.coupon?.code ? { couponCode: cartState.coupon.code } : {}),
       };
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/checkout/intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (response.status === 401) {
@@ -70,13 +73,12 @@ export default function CartDrawer() {
 
       const data = await response.json();
 
-      const checkoutUrl = data.init_point || data.checkoutUrl;
+      const checkoutUrl = data.checkoutUrl || data.init_point;
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       } else {
         throw new Error('El servidor no devolvió una URL de pago válida.');
       }
-
     } catch (error: any) {
       console.error('Error procesando checkout:', error);
       setCheckoutError(error.message || 'Error de conexión con el servidor de pagos.');
@@ -84,8 +86,8 @@ export default function CartDrawer() {
     }
   };
 
-  const finalTotal = cartState.coupon 
-    ? cartState.subtotal - cartState.coupon.projectedDiscount 
+  const finalTotal = cartState.coupon
+    ? cartState.subtotal - cartState.coupon.projectedDiscount
     : cartState.subtotal;
 
   return (
@@ -93,7 +95,9 @@ export default function CartDrawer() {
       <div className="w-96 bg-white h-full shadow-xl flex flex-col">
         <div className="p-4 border-b flex justify-between items-center bg-gray-50">
           <h2 className="text-lg font-bold">Tu Carrito</h2>
-          <button onClick={cartState.closeDrawer} className="text-gray-500 hover:text-black">✕</button>
+          <button onClick={cartState.closeDrawer} className="text-gray-500 hover:text-black">
+            ✕
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -105,24 +109,28 @@ export default function CartDrawer() {
                 <div>
                   <h3 className="font-medium text-sm">{item.name}</h3>
                   <div className="flex items-center space-x-2 mt-2">
-                    <button 
-                      onClick={() => cartState.updateQuantity(item.productId, item.quantity - 1)} 
+                    <button
+                      onClick={() => cartState.updateQuantity(item.productId, item.quantity - 1)}
                       className="px-2 bg-gray-200 rounded disabled:opacity-50"
                       disabled={isSubmitting || cartState.isSyncing}
-                    >-</button>
+                    >
+                      -
+                    </button>
                     <span className="text-sm">{item.quantity}</span>
-                    <button 
-                      onClick={() => cartState.updateQuantity(item.productId, item.quantity + 1)} 
+                    <button
+                      onClick={() => cartState.updateQuantity(item.productId, item.quantity + 1)}
                       className="px-2 bg-gray-200 rounded disabled:opacity-50"
                       disabled={isSubmitting || cartState.isSyncing}
-                    >+</button>
+                    >
+                      +
+                    </button>
                   </div>
                   {item.error && <p className="text-red-500 text-xs mt-1">{item.error}</p>}
                 </div>
                 <div className="text-right">
                   <p className="font-bold">${item.unitPrice?.toLocaleString('es-AR')}</p>
-                  <button 
-                    onClick={() => cartState.removeItem(item.productId)} 
+                  <button
+                    onClick={() => cartState.removeItem(item.productId)}
                     className="text-xs text-red-500 mt-2 hover:underline disabled:opacity-50"
                     disabled={isSubmitting || cartState.isSyncing}
                   >
@@ -136,27 +144,27 @@ export default function CartDrawer() {
 
         {cartState.items.length > 0 && (
           <div className="p-4 border-t bg-gray-50">
-            <div className="mb-4">
+            <div className="mb-3">
               <div className="flex space-x-2">
-                <input 
-                  type="text" 
-                  value={couponInput} 
+                <input
+                  type="text"
+                  value={couponInput}
                   onChange={(e) => setCouponInput(e.target.value)}
-                  placeholder="Código de descuento" 
+                  placeholder="Código de descuento"
                   className="border p-2 w-full text-sm rounded"
                   disabled={!!cartState.coupon || cartState.isSyncing || isSubmitting}
                 />
                 {!cartState.coupon ? (
-                  <button 
-                    onClick={handleApplyCoupon} 
-                    disabled={!couponInput || cartState.isSyncing || isSubmitting} 
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={!couponInput || cartState.isSyncing || isSubmitting}
                     className="bg-black text-white px-4 py-2 rounded text-sm disabled:bg-gray-400"
                   >
                     Aplicar
                   </button>
                 ) : (
-                  <button 
-                    onClick={cartState.removeCoupon} 
+                  <button
+                    onClick={cartState.removeCoupon}
                     disabled={isSubmitting}
                     className="bg-red-500 text-white px-4 py-2 rounded text-sm"
                   >
@@ -172,7 +180,42 @@ export default function CartDrawer() {
               )}
             </div>
 
-            <div className="space-y-2 mb-4 text-sm">
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                Método de Pago
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={isSubmitting || cartState.isSyncing}
+                  onClick={() => setSelectedMethod('MOBBEX')}
+                  className={`p-2.5 rounded border text-left transition-all ${
+                    selectedMethod === 'MOBBEX'
+                      ? 'border-purple-700 bg-purple-50 ring-1 ring-purple-700'
+                      : 'border-gray-300 bg-white hover:border-gray-400'
+                  }`}
+                >
+                  <div className="font-bold text-xs text-purple-900">Mobbex</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">Tarjetas, cuotas y QR</div>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSubmitting || cartState.isSyncing}
+                  onClick={() => setSelectedMethod('MP')}
+                  className={`p-2.5 rounded border text-left transition-all ${
+                    selectedMethod === 'MP'
+                      ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600'
+                      : 'border-gray-300 bg-white hover:border-gray-400'
+                  }`}
+                >
+                  <div className="font-bold text-xs text-blue-900">Mercado Pago</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">Dinero en cuenta / Tarjeta</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 mb-3 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal</span>
                 <span>${cartState.subtotal.toLocaleString('es-AR')}</span>
@@ -193,12 +236,20 @@ export default function CartDrawer() {
               <p className="text-red-600 text-xs mb-3 text-center font-medium">{checkoutError}</p>
             )}
 
-            <button 
-              className="w-full bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-              disabled={cartState.isSyncing || isSubmitting || cartState.items.some(i => i.error)}
+            <button
+              className={`w-full text-white py-3 rounded font-bold transition-colors disabled:bg-gray-400 ${
+                selectedMethod === 'MOBBEX'
+                  ? 'bg-purple-700 hover:bg-purple-800'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+              disabled={cartState.isSyncing || isSubmitting || cartState.items.some((i) => i.error)}
               onClick={handleProceedToPayment}
             >
-              {isSubmitting ? 'Procesando Pago...' : cartState.isSyncing ? 'Sincronizando...' : 'Proceder al Pago'}
+              {isSubmitting
+                ? 'Conectando con pasarela...'
+                : cartState.isSyncing
+                ? 'Sincronizando...'
+                : `Pagar con ${selectedMethod === 'MOBBEX' ? 'Mobbex' : 'Mercado Pago'}`}
             </button>
           </div>
         )}
