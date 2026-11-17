@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import CartDrawer from "@/src/components/cart/CartDrawer"; 
+import CartDrawer from "@/src/components/cart/CartDrawer";
 import AttributionHandler from "@/src/components/AttributionHandler";
 import Navbar from "@/src/components/layout/Navbar";
+import { getCategoryTree } from "@/src/services/category.service";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -13,12 +14,14 @@ export const metadata: Metadata = {
   description: "Tienda online y sistema de gestión de ventas",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const categories = await getCategoryTree();
+
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
         <AttributionHandler />
-        <Navbar />
+        <Navbar categories={categories} />
         <main className="flex-1">
           {children}
         </main>

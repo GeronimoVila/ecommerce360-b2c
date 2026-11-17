@@ -1,3 +1,10 @@
+export interface ProductCategory {
+  id: string;
+  name: string;
+  slug: string;
+  path?: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -6,6 +13,7 @@ export interface Product {
   physical_stock: number;
   is_combo: boolean;
   category_id?: string | null;
+  category?: ProductCategory | null;
   dynamic_pricing?: DynamicPricing;
   combo_parts?: ComboPart[];
 }

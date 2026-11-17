@@ -1,6 +1,6 @@
 import { Product } from '@/src/types/product';
 import Link from 'next/link';
-import AddToCartButton from './AddToCartButton'; 
+import AddToCartButton from './AddToCartButton';
 
 interface ProductCardProps {
   product: Product;
@@ -20,15 +20,33 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {product.is_combo && <span className="px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded">Combo Especial</span>}
-        {discountPlan && <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded">{discountPlan.discount_percentage}% OFF</span>}
+        {product.category && (
+          <Link
+            href={`/?category=${product.category.slug}`}
+            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+          >
+            {product.category.name}
+          </Link>
+        )}
+        {product.is_combo && (
+          <span className="px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded">
+            Combo Especial
+          </span>
+        )}
+        {discountPlan && (
+          <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded">
+            {discountPlan.discount_percentage}% OFF
+          </span>
+        )}
       </div>
 
       <h3 className="mb-1 text-lg font-medium text-gray-900 leading-tight">{product.name}</h3>
       <p className="mb-4 text-xs text-gray-500">SKU: {product.sku}</p>
 
       <div className="mt-auto">
-        {discountPlan && <p className="text-sm text-gray-400 line-through">${basePrice.toLocaleString('es-AR')}</p>}
+        {discountPlan && (
+          <p className="text-sm text-gray-400 line-through">${basePrice.toLocaleString('es-AR')}</p>
+        )}
         <p className="text-2xl font-bold text-gray-900">${displayPrice.toLocaleString('es-AR')}</p>
 
         {bestInstallment && (
@@ -38,19 +56,21 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
 
         {product.physical_stock > 0 && product.physical_stock <= 3 && (
-          <p className="mt-2 text-xs font-medium text-red-600">¡Últimas {product.physical_stock} unidades!</p>
+          <p className="mt-2 text-xs font-medium text-red-600">
+            ¡Últimas {product.physical_stock} unidades!
+          </p>
         )}
       </div>
 
       <div className="flex gap-2 mt-5">
-        <AddToCartButton 
-          productId={product.id} 
-          quantity={1} 
+        <AddToCartButton
+          productId={product.id}
+          quantity={1}
           maxStock={product.physical_stock}
           disabled={product.physical_stock <= 0}
         />
-        <Link 
-          href={`/productos/${product.id}`} 
+        <Link
+          href={`/productos/${product.id}`}
           className="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 transition-colors border border-gray-300 rounded hover:bg-gray-50"
         >
           Ver
