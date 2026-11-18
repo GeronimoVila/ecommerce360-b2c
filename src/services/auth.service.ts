@@ -1,5 +1,17 @@
 import { coreFetch } from '../lib/apiClient';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: 'ADMIN' | 'SELLER' | 'CUSTOMER' | 'LOGISTICS';
+}
+
+export interface AuthResponse {
+  message: string;
+  rememberMe?: boolean;
+  user: AuthUser;
+}
+
 interface LoginPayload {
   email: string;
   password: string;
@@ -16,7 +28,7 @@ interface RegisterPayload {
 }
 
 export const authService = {
-  async registerAndLogin(data: RegisterPayload) {
+  async registerAndLogin(data: RegisterPayload): Promise<AuthResponse> {
     await coreFetch('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -29,7 +41,7 @@ export const authService = {
     });
 
     try {
-      return await coreFetch('/api/v1/auth/login', {
+      return await coreFetch<AuthResponse>('/api/v1/auth/login', {
         method: 'POST',
         body: JSON.stringify({
           email: data.email,
@@ -42,8 +54,8 @@ export const authService = {
     }
   },
 
-  async login(data: LoginPayload) {
-    return coreFetch<{ message: string; rememberMe: boolean; user: any }>('/api/v1/auth/login', {
+  async login(data: LoginPayload): Promise<AuthResponse> {
+    return coreFetch<AuthResponse>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         email: data.email,
@@ -53,15 +65,15 @@ export const authService = {
     });
   },
 
-  async logout() {
-    return coreFetch('/api/v1/auth/logout', {
+  async logout(): Promise<void> {
+    await coreFetch('/api/v1/auth/logout', {
       method: 'POST',
     });
   },
 
-  async getSession() {
+  async getSession(): Promise<{ user: AuthUser } | null> {
     try {
-      return await coreFetch<{ user: any }>('/api/v1/auth/me', {
+      return await coreFetch<{ user: AuthUser }>('/api/v1/auth/me', {
         method: 'GET',
       });
     } catch {
