@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/src/services/auth.service';
 import { useAuthStore } from '@/src/store/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
-  const setSession = useAuthStore((state) => state.setSession);
+  const { setSession, isAuthenticated, isChecking } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isChecking && isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isChecking, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -17,13 +23,14 @@ export default function LoginPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    
+
     try {
       const data = await authService.login({
-        email: formData.get('email'),
-        password: formData.get('password')
+        email: String(formData.get('email') || ''),
+        password: String(formData.get('password') || ''),
+        rememberMe: formData.get('rememberMe') === 'on',
       });
-      
+
       setSession(data.user);
       router.push('/');
       router.refresh();
@@ -43,21 +50,47 @@ export default function LoginPage() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && <div className="p-3 text-sm text-red-700 bg-red-100 rounded text-center">{error}</div>}
-          
+          {error && (
+            <div className="p-3 text-sm text-red-700 bg-red-100 rounded text-center">
+              {error}
+            </div>
+          )}
+
           <div className="rounded-md shadow-sm space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input name="email" type="email" required className="w-full mt-1 border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500" />
+              <input
+                name="email"
+                type="email"
+                required
+                className="w-full mt-1 border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-              <input name="password" type="password" required className="w-full mt-1 border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500" />
+              <input
+                name="password"
+                type="password"
+                required
+                className="w-full mt-1 border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+              <input
+                name="rememberMe"
+                type="checkbox"
+                defaultChecked
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              Mantener sesión iniciada
+            </label>
+          </div>
+
+          <button
+            type="submit"
             disabled={loading}
             className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
           >

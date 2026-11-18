@@ -1,65 +1,71 @@
+import { coreFetch } from '../lib/apiClient';
+
+interface LoginPayload {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+interface RegisterPayload {
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  rememberMe?: boolean;
+}
+
 export const authService = {
-  async registerAndLogin(data: any) {
-    const registerRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
+  async registerAndLogin(data: RegisterPayload) {
+    await coreFetch('/api/v1/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: data.email,
         password: data.password,
         first_name: data.first_name,
         last_name: data.last_name,
-        phone: data.phone
-      })
+        phone: data.phone,
+      }),
     });
 
-    if (!registerRes.ok) {
-      const error = await registerRes.json();
-      throw new Error(error.error || 'Error al registrar el cliente');
-    }
-
-    const loginRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        email: data.email,
-        password: data.password
-      })
-    });
-
-    if (!loginRes.ok) {
+    try {
+      return await coreFetch('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          rememberMe: data.rememberMe ?? true,
+        }),
+      });
+    } catch {
       throw new Error('Registro exitoso, pero falló el inicio de sesión automático.');
     }
-
-    return await loginRes.json();
   },
 
-  async login(data: any) {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
+  async login(data: LoginPayload) {
+    return coreFetch<{ message: string; rememberMe: boolean; user: any }>('/api/v1/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        rememberMe: Boolean(data.rememberMe),
+      }),
     });
-    if (!res.ok) throw new Error('Credenciales inválidas');
-    return await res.json();
   },
 
   async logout() {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/logout`, {
+    return coreFetch('/api/v1/auth/logout', {
       method: 'POST',
-      credentials: 'include'
     });
-    if (!res.ok) throw new Error('Error al cerrar sesión');
-    return await res.json();
   },
 
   async getSession() {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  }
+    try {
+      return await coreFetch<{ user: any }>('/api/v1/auth/me', {
+        method: 'GET',
+      });
+    } catch {
+      return null;
+    }
+  },
 };
