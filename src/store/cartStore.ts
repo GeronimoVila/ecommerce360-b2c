@@ -8,6 +8,7 @@ export interface CartItem {
   unitPrice: number;
   quantity: number;
   availableStock?: number;
+  imageUrl?: string | null;
   error?: string;
 }
 
@@ -62,7 +63,7 @@ export const useCartStore = create<CartState>()(
         } else {
           set({ items: [...items, { ...newItem, name: 'Cargando...', unitPrice: 0 }] });
         }
-        
+
         set({ isDrawerOpen: true });
         get().syncWithBackend();
       },
@@ -97,7 +98,7 @@ export const useCartStore = create<CartState>()(
 
         try {
           const payload = items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
-          
+
           const response = await coreFetch<{ success: boolean; subtotal: number; items: CartItem[] }>(
             '/api/v1/checkout/cart/sync',
             { method: 'POST', body: JSON.stringify({ items: payload }) }
@@ -107,7 +108,7 @@ export const useCartStore = create<CartState>()(
 
           if (response.success) {
             set({ items: response.items, subtotal: response.subtotal });
-            
+
             if (coupon) {
               const couponValid = await get().applyCoupon(coupon.code);
               if (!couponValid) {
@@ -149,7 +150,7 @@ export const useCartStore = create<CartState>()(
       },
 
       removeCoupon: () => set({ coupon: null }),
-      
+
       openDrawer: () => set({ isDrawerOpen: true }),
       closeDrawer: () => set({ isDrawerOpen: false }),
     }),

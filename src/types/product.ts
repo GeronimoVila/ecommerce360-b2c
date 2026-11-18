@@ -5,6 +5,14 @@ export interface ProductCategory {
   path?: string;
 }
 
+export interface ProductImage {
+  id: string;
+  url: string;
+  alt_text?: string | null;
+  position: number;
+  is_primary: boolean;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -14,6 +22,7 @@ export interface Product {
   is_combo: boolean;
   category_id?: string | null;
   category?: ProductCategory | null;
+  images?: ProductImage[];
   dynamic_pricing?: DynamicPricing;
   combo_parts?: ComboPart[];
 }

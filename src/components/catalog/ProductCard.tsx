@@ -1,4 +1,5 @@
 import { Product } from '@/src/types/product';
+import Image from 'next/image';
 import Link from 'next/link';
 import AddToCartButton from './AddToCartButton';
 
@@ -13,11 +14,29 @@ export default function ProductCard({ product }: ProductCardProps) {
   const displayPrice = discountPlan ? discountPlan.final_total : basePrice;
   const bestInstallment = creditPlans.length > 0 ? creditPlans[creditPlans.length - 1] : null;
 
+  const primaryImage =
+    product.images?.find((img) => img.is_primary) || product.images?.[0] || null;
+
   return (
     <div className="flex flex-col h-full p-4 transition-shadow bg-white border rounded-lg shadow-sm hover:shadow-md">
-      <div className="flex items-center justify-center w-full h-48 mb-4 bg-gray-100 rounded-md">
-        <span className="text-sm text-gray-400">Imagen del Producto</span>
-      </div>
+      <Link
+        href={`/productos/${product.id}`}
+        className="group relative block w-full h-48 mb-4 overflow-hidden bg-gray-100 rounded-md"
+      >
+        {primaryImage ? (
+          <Image
+            src={primaryImage.url}
+            alt={primaryImage.alt_text || product.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full">
+            <span className="text-sm text-gray-400">Sin Imagen</span>
+          </div>
+        )}
+      </Link>
 
       <div className="flex flex-wrap gap-2 mb-3">
         {product.category && (
@@ -40,7 +59,9 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
 
-      <h3 className="mb-1 text-lg font-medium text-gray-900 leading-tight">{product.name}</h3>
+      <Link href={`/productos/${product.id}`} className="hover:text-blue-600 transition-colors">
+        <h3 className="mb-1 text-lg font-medium text-gray-900 leading-tight">{product.name}</h3>
+      </Link>
       <p className="mb-4 text-xs text-gray-500">SKU: {product.sku}</p>
 
       <div className="mt-auto">

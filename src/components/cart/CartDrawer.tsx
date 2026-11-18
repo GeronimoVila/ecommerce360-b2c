@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useStore } from '../../hooks/useStore';
 import { useCartStore } from '../../store/cartStore';
 
@@ -104,41 +105,61 @@ export default function CartDrawer() {
           {cartState.items.length === 0 ? (
             <p className="text-gray-500 text-center mt-10">El carrito está vacío.</p>
           ) : (
-            cartState.items.map((item) => (
-              <div key={item.productId} className="flex justify-between border-b pb-4">
-                <div>
-                  <h3 className="font-medium text-sm">{item.name}</h3>
-                  <div className="flex items-center space-x-2 mt-2">
+            cartState.items.map((item: any) => {
+              const thumbUrl = item.imageUrl || item.image || null;
+              return (
+                <div key={item.productId} className="flex items-start gap-3 border-b pb-4">
+                  <div className="relative w-14 h-14 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-100">
+                    {thumbUrl ? (
+                      <Image
+                        src={thumbUrl}
+                        alt={item.name || 'Producto'}
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full text-[10px] text-gray-400">
+                        Sin foto
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm truncate">{item.name}</h3>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <button
+                        onClick={() => cartState.updateQuantity(item.productId, item.quantity - 1)}
+                        className="px-2 bg-gray-200 rounded disabled:opacity-50"
+                        disabled={isSubmitting || cartState.isSyncing}
+                      >
+                        -
+                      </button>
+                      <span className="text-sm">{item.quantity}</span>
+                      <button
+                        onClick={() => cartState.updateQuantity(item.productId, item.quantity + 1)}
+                        className="px-2 bg-gray-200 rounded disabled:opacity-50"
+                        disabled={isSubmitting || cartState.isSyncing}
+                      >
+                        +
+                      </button>
+                    </div>
+                    {item.error && <p className="text-red-500 text-xs mt-1">{item.error}</p>}
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-sm">${item.unitPrice?.toLocaleString('es-AR')}</p>
                     <button
-                      onClick={() => cartState.updateQuantity(item.productId, item.quantity - 1)}
-                      className="px-2 bg-gray-200 rounded disabled:opacity-50"
+                      onClick={() => cartState.removeItem(item.productId)}
+                      className="text-xs text-red-500 mt-2 hover:underline disabled:opacity-50"
                       disabled={isSubmitting || cartState.isSyncing}
                     >
-                      -
-                    </button>
-                    <span className="text-sm">{item.quantity}</span>
-                    <button
-                      onClick={() => cartState.updateQuantity(item.productId, item.quantity + 1)}
-                      className="px-2 bg-gray-200 rounded disabled:opacity-50"
-                      disabled={isSubmitting || cartState.isSyncing}
-                    >
-                      +
+                      Eliminar
                     </button>
                   </div>
-                  {item.error && <p className="text-red-500 text-xs mt-1">{item.error}</p>}
                 </div>
-                <div className="text-right">
-                  <p className="font-bold">${item.unitPrice?.toLocaleString('es-AR')}</p>
-                  <button
-                    onClick={() => cartState.removeItem(item.productId)}
-                    className="text-xs text-red-500 mt-2 hover:underline disabled:opacity-50"
-                    disabled={isSubmitting || cartState.isSyncing}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

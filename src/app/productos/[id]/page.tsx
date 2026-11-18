@@ -1,6 +1,7 @@
 import { Product } from '@/src/types/product';
 import PaymentSimulator from '@/src/components/catalog/PaymentSimulator';
 import AddToCartButton from '@/src/components/catalog/AddToCartButton';
+import ProductGallery from '@/src/components/catalog/ProductGallery';
 import { getCategoryTree, getCategoryBreadcrumbs } from '@/src/services/category.service';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -65,9 +66,7 @@ async function ProductDetailContent({ paramsPromise }: { paramsPromise: Promise<
       </nav>
 
       <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12">
-        <div className="flex flex-col items-center justify-center w-full bg-gray-100 rounded-lg aspect-square">
-          <span className="text-xl font-medium text-gray-400">Sin Imagen Disponible</span>
-        </div>
+        <ProductGallery images={product.images} productName={product.name} />
 
         <div className="mt-10 px-4 sm:px-0 lg:mt-0">
           <div className="mb-6">
