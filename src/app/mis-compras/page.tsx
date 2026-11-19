@@ -149,7 +149,6 @@ export default function MisComprasPage() {
       setTotalPages(response.meta.totalPages || 1);
       setTotalOrders(response.meta.total);
 
-      // Expandir automáticamente la compra más reciente en la primera página
       if (page === 1 && response.data.length > 0) {
         setExpandedOrderIds((prev) => ({
           ...prev,
@@ -191,7 +190,6 @@ export default function MisComprasPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -211,7 +209,6 @@ export default function MisComprasPage() {
         </Link>
       </div>
 
-      {/* Tabs de filtro por estado */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-gray-200">
         {FILTER_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -231,7 +228,6 @@ export default function MisComprasPage() {
         })}
       </div>
 
-      {/* Estados de carga y error */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((skeleton) => (
@@ -301,7 +297,6 @@ export default function MisComprasPage() {
                 key={order.id}
                 className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden transition-all"
               >
-                {/* Cabecera del Pedido */}
                 <div className="p-5 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2.5">
@@ -346,7 +341,6 @@ export default function MisComprasPage() {
                   </div>
                 </div>
 
-                {/* Barra de Seguimiento Logístico */}
                 <div className="px-5 sm:px-6 py-4 bg-gray-50/70 border-b border-gray-100">
                   <p className="text-xs font-medium text-gray-600 mb-3">
                     {statusMeta.description}
@@ -382,7 +376,6 @@ export default function MisComprasPage() {
                   </div>
                 </div>
 
-                {/* Detalle Expandible de Ítems y Metadatos */}
                 {isExpanded && (
                   <div className="p-5 sm:p-6 space-y-5">
                     <div className="divide-y divide-gray-100">
@@ -443,7 +436,6 @@ export default function MisComprasPage() {
                       ))}
                     </div>
 
-                    {/* Pie con información de pago, envío y asesor */}
                     <div className="pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600 bg-gray-50 p-4 rounded-xl">
                       <div className="flex items-start gap-2">
                         <CreditCard className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
@@ -502,7 +494,6 @@ export default function MisComprasPage() {
             );
           })}
 
-          {/* Paginación */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4">
               <span className="text-xs text-gray-500">

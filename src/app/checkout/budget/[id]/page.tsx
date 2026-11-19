@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
+import { BudgetPaymentForm, type PaymentActionState } from './BudgetPaymentForm';
 
 interface BudgetPageProps {
   params: Promise<{ id: string }>;
@@ -20,16 +22,36 @@ function BudgetSkeleton() {
 
 async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: string }> }) {
   const { id } = await paramsPromise;
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
+  const returnPath = `/checkout/budget/${id}`;
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+
+  if (!cookieHeader) {
+    redirect(`/login?redirect=${encodeURIComponent(returnPath)}`);
+  }
+
+  const meRes = await fetch(`${apiUrl}/api/v1/users/me`, {
+    headers: { Cookie: cookieHeader },
+    cache: 'no-store',
+  });
+
+  if (!meRes.ok) {
+    redirect(`/login?redirect=${encodeURIComponent(returnPath)}`);
+  }
+
+  const meData = await meRes.json().catch(() => null);
+  const currentUser = meData?.user || meData;
+
+  if (!currentUser || currentUser.role !== 'CUSTOMER') {
+    redirect(`/login?redirect=${encodeURIComponent(returnPath)}`);
+  }
+
   const endpoint = `${apiUrl}/api/v1/checkout/budget/${id}`;
-
   const res = await fetch(endpoint, { cache: 'no-store' });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    console.error(`[Fetch Error] Endpoint: ${endpoint} | Status: ${res.status} | Respuesta:`, errorText);
-
     if (res.status === 404 || res.status === 410) {
       return notFound();
     }
@@ -38,33 +60,66 @@ async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: s
 
   const { budget } = await res.json();
 
-  async function processPayment(formData: FormData) {
+  async function processPayment(
+    _prevState: PaymentActionState,
+    formData: FormData
+  ): Promise<PaymentActionState> {
     'use server';
     const chosenMethod = (formData.get('paymentMethod') as string) || budget.payment_method || 'MOBBEX';
+    const actionCookies = (await cookies()).toString();
 
-    const payRes = await fetch(`${apiUrl}/api/v1/checkout/budget/${id}/pay`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentMethod: chosenMethod }),
-      cache: 'no-store',
-    });
+    let payData: any = {};
+    let isOk = false;
+    let status = 500;
 
-    const payData = await payRes.json();
+    try {
+      const payRes = await fetch(`${apiUrl}/api/v1/checkout/budget/${id}/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: actionCookies,
+        },
+        body: JSON.stringify({ paymentMethod: chosenMethod }),
+        cache: 'no-store',
+      });
 
-    if (payData.checkoutUrl) {
-      redirect(payData.checkoutUrl);
-    } else {
-      throw new Error(payData.error || 'Fallo al inicializar la pasarela de pago');
+      status = payRes.status;
+      isOk = payRes.ok;
+      payData = await payRes.json().catch(() => ({}));
+    } catch (err) {
+      console.error('[BudgetCheckoutPage] Error de red al contactar pasarela:', err);
+      return {
+        error: 'No se pudo conectar con el servidor de pagos.',
+        details: 'Verifica tu conexión e intenta nuevamente en unos segundos.',
+      };
     }
+
+    if (status === 401) {
+      redirect(`/login?redirect=${encodeURIComponent(returnPath)}`);
+    }
+
+    if (isOk && payData.checkoutUrl) {
+      redirect(payData.checkoutUrl);
+    }
+
+    return {
+      error: payData.error || 'Fallo al inicializar la pasarela de pago.',
+      details: payData.details,
+    };
   }
 
   const defaultMethod = budget.payment_method === 'MP' ? 'MP' : 'MOBBEX';
 
   return (
     <div className="max-w-xl mx-auto p-6 bg-white shadow-lg rounded-xl mt-10 border border-gray-100">
-      <div className="border-b pb-4 mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Resumen de tu Presupuesto</h1>
-        <p className="text-xs text-gray-400 font-mono mt-1">ID de Orden: {budget.id}</p>
+      <div className="border-b pb-4 mb-4 flex justify-between items-start gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Resumen de tu Presupuesto</h1>
+          <p className="text-xs text-gray-400 font-mono mt-1">ID de Orden: {budget.id}</p>
+        </div>
+        <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">
+          {currentUser.email}
+        </span>
       </div>
 
       <div className="space-y-3 mb-6">
@@ -91,28 +146,7 @@ async function BudgetDetails({ paramsPromise }: { paramsPromise: Promise<{ id: s
         ⚠️ Oferta válida hasta el {new Date(budget.expires_at).toLocaleString()}
       </p>
 
-      <form action={processPayment} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
-            Pasarela de Pago
-          </label>
-          <select
-            name="paymentMethod"
-            defaultValue={defaultMethod}
-            className="w-full border border-gray-300 rounded-lg p-3 text-sm font-semibold text-gray-800 bg-white focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-          >
-            <option value="MOBBEX">Mobbex (Tarjetas de Crédito / Débito / Cuotas / QR)</option>
-            <option value="MP">Mercado Pago</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2"
-        >
-          Proceder al Pago Seguro
-        </button>
-      </form>
+      <BudgetPaymentForm defaultMethod={defaultMethod} action={processPayment} />
     </div>
   );
 }

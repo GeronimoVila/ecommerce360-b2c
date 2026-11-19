@@ -1,21 +1,33 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { authService } from '@/src/services/auth.service';
 import { useAuthStore } from '@/src/store/authStore';
 
-export default function LoginPage() {
+function getSafeRedirect(rawRedirect: string | null): string {
+  if (!rawRedirect) return '/';
+  if (rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')) {
+    return rawRedirect;
+  }
+  return '/';
+}
+
+function LoginFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = getSafeRedirect(searchParams.get('redirect'));
+
   const { setSession, isAuthenticated, isChecking } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isChecking && isAuthenticated) {
-      router.replace('/');
+      router.replace(redirectTarget);
     }
-  }, [isChecking, isAuthenticated, router]);
+  }, [isChecking, isAuthenticated, router, redirectTarget]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,7 +44,7 @@ export default function LoginPage() {
       });
 
       setSession(data.user);
-      router.push('/');
+      router.push(redirectTarget);
       router.refresh();
     } catch (err: any) {
       setError(err.message || 'Credenciales inválidas.');
@@ -41,15 +53,26 @@ export default function LoginPage() {
     }
   };
 
+  const registerHref =
+    redirectTarget !== '/'
+      ? `/checkout/register?redirect=${encodeURIComponent(redirectTarget)}`
+      : '/checkout/register';
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-100">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
             Iniciar Sesión
           </h2>
+          {redirectTarget.startsWith('/checkout/') && (
+            <p className="mt-2 text-center text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 py-2 px-3 rounded-lg">
+              Inicia sesión o registrate para continuar con el pago.
+            </p>
+          )}
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="p-3 text-sm text-red-700 bg-red-100 rounded text-center">
               {error}
@@ -96,8 +119,23 @@ export default function LoginPage() {
           >
             {loading ? 'Verificando...' : 'Entrar'}
           </button>
+
+          <p className="text-center text-xs text-gray-500">
+            ¿No tienes cuenta?{' '}
+            <Link href={registerHref} className="font-semibold text-blue-600 hover:underline">
+              Regístrate como cliente
+            </Link>
+          </p>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[70vh] flex items-center justify-center">Cargando...</div>}>
+      <LoginFormContent />
+    </Suspense>
   );
 }

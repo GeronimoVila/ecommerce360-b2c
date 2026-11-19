@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { authService } from '@/src/services/auth.service';
 import { useAuthStore } from '@/src/store/authStore';
 import { useCartStore } from '@/src/store/cartStore';
@@ -11,8 +12,19 @@ const getFormString = (formData: FormData, key: string): string => {
   return typeof value === 'string' ? value.trim() : '';
 };
 
+function getSafeRedirect(rawRedirect: string | null): string | null {
+  if (!rawRedirect) return null;
+  if (rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')) {
+    return rawRedirect;
+  }
+  return null;
+}
+
 export default function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = getSafeRedirect(searchParams.get('redirect'));
+
   const setSession = useAuthStore((state) => state.setSession);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +62,12 @@ export default function RegisterForm() {
         setSession(authResponse.user);
       }
 
+      if (redirectTarget) {
+        router.push(redirectTarget);
+        router.refresh();
+        return;
+      }
+
       const freshItems = useCartStore.getState().items;
 
       if (freshItems.length > 0) {
@@ -79,13 +97,17 @@ export default function RegisterForm() {
         }
       }
 
-      router.push('/checkout');
+      router.push('/');
       router.refresh();
     } catch (err: any) {
       setError(err.message || 'Error en el proceso de registro.');
       setLoading(false);
     }
   };
+
+  const loginHref = redirectTarget
+    ? `/login?redirect=${encodeURIComponent(redirectTarget)}`
+    : '/login';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-6 bg-white shadow rounded-lg">
@@ -130,15 +152,19 @@ export default function RegisterForm() {
         disabled={loading}
         className="w-full py-3 px-4 mt-4 text-white bg-blue-600 hover:bg-blue-700 rounded-md font-medium disabled:bg-gray-400 transition-colors"
       >
-        {loading ? 'Creando cuenta y conectando con pagos...' : 'Crear Cuenta y Pagar'}
+        {loading
+          ? 'Creando cuenta...'
+          : redirectTarget
+          ? 'Crear Cuenta y Continuar al Pago'
+          : 'Crear Cuenta y Pagar'}
       </button>
 
       <div className="text-center mt-4">
         <p className="text-sm text-gray-600">
           ¿Ya tienes cuenta?{' '}
-          <a href="/login" className="font-medium text-blue-600 hover:text-blue-500 underline">
+          <Link href={loginHref} className="font-medium text-blue-600 hover:text-blue-500 underline">
             Inicia sesión
-          </a>
+          </Link>
         </p>
       </div>
     </form>
