@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { Package } from 'lucide-react';
 import { useAuthStore } from '@/src/store/authStore';
 import { useCartStore } from '@/src/store/cartStore';
 import { CategoryNode } from '@/src/types/category';
@@ -31,19 +32,28 @@ export default function Navbar({ categories = [] }: NavbarProps) {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-4 sm:space-x-6">
             {!isChecking && (
               <>
                 {isAuthenticated ? (
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600 hidden sm:block">
-                      Hola, {user?.email}
+                  <div className="flex items-center space-x-3 sm:space-x-5">
+                    <Link
+                      href="/mis-compras"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-blue-600 transition-colors"
+                    >
+                      <Package className="w-4 h-4 text-blue-600" />
+                      <span>Mis Compras</span>
+                    </Link>
+
+                    <span className="text-sm text-gray-500 hidden md:block">
+                      {user?.email}
                     </span>
+
                     <button
                       onClick={logout}
                       className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
                     >
-                      Cerrar Sesión
+                      Salir
                     </button>
                   </div>
                 ) : (

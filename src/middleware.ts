@@ -5,18 +5,23 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('access_token');
   const refreshToken = request.cookies.get('refresh_token');
   const hasActiveSession = Boolean(accessToken || refreshToken);
+  const { pathname } = request.nextUrl;
 
-  if (request.nextUrl.pathname === '/checkout' && !hasActiveSession) {
+  if (pathname === '/checkout' && !hasActiveSession) {
     return NextResponse.redirect(new URL('/checkout/register', request.url));
   }
 
-  if (request.nextUrl.pathname.startsWith('/checkout/register') && hasActiveSession) {
+  if (pathname.startsWith('/checkout/register') && hasActiveSession) {
     return NextResponse.redirect(new URL('/checkout', request.url));
+  }
+
+  if (pathname.startsWith('/mis-compras') && !hasActiveSession) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/checkout/:path*'],
+  matcher: ['/checkout/:path*', '/mis-compras/:path*'],
 };
