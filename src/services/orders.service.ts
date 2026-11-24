@@ -1,6 +1,6 @@
 import { coreFetch } from '../lib/apiClient';
 
-export type OrderStatus = 'PENDING' | 'BUDGET' | 'PAID' | 'SHIPPED' | 'DELIVERED';
+export type OrderStatus = 'PENDING' | 'BUDGET' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELED';
 
 export interface CustomerOrderItem {
   id: string;
@@ -53,7 +53,7 @@ export const ordersService = {
     const query = new URLSearchParams();
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
-    if (params?.status && params.status !== 'ALL') {
+    if (params?.status && params?.status !== 'ALL') {
       query.set('status', params.status);
     }
 

@@ -6,6 +6,7 @@ import { Package } from 'lucide-react';
 import { useAuthStore } from '@/src/store/authStore';
 import { useCartStore } from '@/src/store/cartStore';
 import { CategoryNode } from '@/src/types/category';
+import NotificationBell from './NotificationBell';
 
 interface NavbarProps {
   categories?: CategoryNode[];
@@ -32,18 +33,20 @@ export default function Navbar({ categories = [] }: NavbarProps) {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4 sm:space-x-6">
+          <div className="flex items-center space-x-3 sm:space-x-5">
             {!isChecking && (
               <>
                 {isAuthenticated ? (
-                  <div className="flex items-center space-x-3 sm:space-x-5">
+                  <div className="flex items-center space-x-3 sm:space-x-4">
                     <Link
                       href="/mis-compras"
                       className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-blue-600 transition-colors"
                     >
                       <Package className="w-4 h-4 text-blue-600" />
-                      <span>Mis Compras</span>
+                      <span className="hidden sm:inline">Mis Compras</span>
                     </Link>
+
+                    <NotificationBell />
 
                     <span className="text-sm text-gray-500 hidden md:block">
                       {user?.email}

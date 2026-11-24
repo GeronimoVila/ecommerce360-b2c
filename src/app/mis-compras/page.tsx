@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Package,
   Clock,
   CheckCircle2,
   Truck,
   PackageCheck,
+  XCircle,
   ChevronDown,
   ChevronUp,
   ShoppingBag,
@@ -27,7 +28,7 @@ import {
   type OrderStatus,
 } from '@/src/services/orders.service';
 
-type FilterTab = 'ALL' | 'PENDING' | 'PAID' | 'SHIPPED' | 'DELIVERED';
+type FilterTab = 'ALL' | 'PENDING' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELED';
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'ALL', label: 'Todas' },
@@ -35,6 +36,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'PAID', label: 'Pagadas' },
   { key: 'SHIPPED', label: 'En camino' },
   { key: 'DELIVERED', label: 'Entregadas' },
+  { key: 'CANCELED', label: 'Canceladas' },
 ];
 
 const STATUS_META: Record<
@@ -82,6 +84,13 @@ const STATUS_META: Record<
     stepIndex: 3,
     Icon: PackageCheck,
   },
+  CANCELED: {
+    label: 'Cancelado',
+    description: 'Este pedido fue cancelado. Si realizaste un pago, gestionaremos la devolución.',
+    badgeClass: 'bg-red-50 text-red-700 border-red-200',
+    stepIndex: -1,
+    Icon: XCircle,
+  },
 };
 
 const TRACKING_STEPS = [
@@ -114,8 +123,11 @@ const formatPaymentMethod = (method: string | null) => {
   return method;
 };
 
-export default function MisComprasPage() {
+function MisComprasContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightedOrderId = searchParams.get('orderId');
+
   const { isAuthenticated, isChecking } = useAuthStore();
 
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -133,6 +145,13 @@ export default function MisComprasPage() {
     }
   }, [isChecking, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (highlightedOrderId) {
+      setActiveTab('ALL');
+      setPage(1);
+    }
+  }, [highlightedOrderId]);
+
   const fetchOrders = useCallback(async () => {
     if (!isAuthenticated) return;
     setLoading(true);
@@ -145,14 +164,36 @@ export default function MisComprasPage() {
         status: activeTab,
       });
 
-      setOrders(response.data);
+      let loadedOrders = response.data;
+
+      if (
+        highlightedOrderId &&
+        page === 1 &&
+        activeTab === 'ALL' &&
+        !loadedOrders.some((o) => o.id === highlightedOrderId)
+      ) {
+        try {
+          const detailRes = await ordersService.getMyOrderDetail(highlightedOrderId);
+          if (detailRes?.data) {
+            loadedOrders = [detailRes.data, ...loadedOrders];
+          }
+        } catch {
+        }
+      }
+
+      setOrders(loadedOrders);
       setTotalPages(response.meta.totalPages || 1);
       setTotalOrders(response.meta.total);
 
-      if (page === 1 && response.data.length > 0) {
+      if (highlightedOrderId && loadedOrders.some((o) => o.id === highlightedOrderId)) {
         setExpandedOrderIds((prev) => ({
           ...prev,
-          [response.data[0].id]: true,
+          [highlightedOrderId]: true,
+        }));
+      } else if (page === 1 && loadedOrders.length > 0) {
+        setExpandedOrderIds((prev) => ({
+          ...prev,
+          [loadedOrders[0].id]: true,
         }));
       }
     } catch (err: any) {
@@ -160,11 +201,20 @@ export default function MisComprasPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, page, activeTab]);
+  }, [isAuthenticated, page, activeTab, highlightedOrderId]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!loading && highlightedOrderId) {
+      const el = document.getElementById(`order-${highlightedOrderId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [loading, highlightedOrderId]);
 
   const handleTabChange = (tab: FilterTab) => {
     setActiveTab(tab);
@@ -291,11 +341,18 @@ export default function MisComprasPage() {
             const statusMeta = STATUS_META[order.status] || STATUS_META.PENDING;
             const StatusIcon = statusMeta.Icon;
             const isExpanded = Boolean(expandedOrderIds[order.id]);
+            const isCanceled = order.status === 'CANCELED';
+            const isHighlighted = highlightedOrderId === order.id;
 
             return (
               <article
+                id={`order-${order.id}`}
                 key={order.id}
-                className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden transition-all"
+                className={`bg-white border rounded-xl shadow-xs overflow-hidden transition-all ${
+                  isHighlighted
+                    ? 'border-blue-500 ring-2 ring-blue-500/20'
+                    : 'border-gray-200'
+                }`}
               >
                 <div className="p-5 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
@@ -317,8 +374,14 @@ export default function MisComprasPage() {
 
                   <div className="flex items-center justify-between sm:justify-end gap-4">
                     <div className="text-left sm:text-right">
-                      <span className="block text-xs text-gray-400">Total abonado</span>
-                      <span className="text-lg font-extrabold text-gray-900">
+                      <span className="block text-xs text-gray-400">
+                        {isCanceled ? 'Monto del pedido' : 'Total abonado'}
+                      </span>
+                      <span
+                        className={`text-lg font-extrabold ${
+                          isCanceled ? 'text-gray-400 line-through' : 'text-gray-900'
+                        }`}
+                      >
                         {formatCurrency(order.total_amount)}
                       </span>
                     </div>
@@ -341,39 +404,50 @@ export default function MisComprasPage() {
                   </div>
                 </div>
 
-                <div className="px-5 sm:px-6 py-4 bg-gray-50/70 border-b border-gray-100">
-                  <p className="text-xs font-medium text-gray-600 mb-3">
+                <div
+                  className={`px-5 sm:px-6 py-4 border-b border-gray-100 ${
+                    isCanceled ? 'bg-red-50/50' : 'bg-gray-50/70'
+                  }`}
+                >
+                  <p
+                    className={`text-xs font-medium ${
+                      isCanceled ? 'text-red-700' : 'text-gray-600 mb-3'
+                    }`}
+                  >
                     {statusMeta.description}
                   </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {TRACKING_STEPS.map((step, idx) => {
-                      const isCompleted = idx <= statusMeta.stepIndex;
-                      const StepIcon = step.Icon;
-                      return (
-                        <div key={step.label} className="flex flex-col">
-                          <div
-                            className={`h-1.5 rounded-full mb-2 transition-colors ${
-                              isCompleted ? 'bg-blue-600' : 'bg-gray-200'
-                            }`}
-                          />
-                          <div className="flex items-center gap-1.5">
-                            <StepIcon
-                              className={`w-3.5 h-3.5 shrink-0 ${
-                                isCompleted ? 'text-blue-600' : 'text-gray-400'
+
+                  {!isCanceled && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {TRACKING_STEPS.map((step, idx) => {
+                        const isCompleted = idx <= statusMeta.stepIndex;
+                        const StepIcon = step.Icon;
+                        return (
+                          <div key={step.label} className="flex flex-col">
+                            <div
+                              className={`h-1.5 rounded-full mb-2 transition-colors ${
+                                isCompleted ? 'bg-blue-600' : 'bg-gray-200'
                               }`}
                             />
-                            <span
-                              className={`text-[11px] font-medium truncate ${
-                                isCompleted ? 'text-gray-900' : 'text-gray-400'
-                              }`}
-                            >
-                              {step.label}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <StepIcon
+                                className={`w-3.5 h-3.5 shrink-0 ${
+                                  isCompleted ? 'text-blue-600' : 'text-gray-400'
+                                }`}
+                              />
+                              <span
+                                className={`text-[11px] font-medium truncate ${
+                                  isCompleted ? 'text-gray-900' : 'text-gray-400'
+                                }`}
+                              >
+                                {step.label}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {isExpanded && (
@@ -520,5 +594,19 @@ export default function MisComprasPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MisComprasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      }
+    >
+      <MisComprasContent />
+    </Suspense>
   );
 }
