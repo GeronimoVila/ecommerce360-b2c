@@ -42,12 +42,18 @@ export default function CartDrawer() {
     }
   };
 
-  const handleGoToCheckout = () => {
+  const handleGoToCheckout = async () => {
+    if (authState?.isChecking) {
+      await authState.checkSession();
+    }
+    const latestAuth = useAuthStore.getState();
     cartState.closeDrawer();
-    if (authState && !authState.isChecking && !authState.isAuthenticated) {
-      router.push('/checkout/register');
+
+    if (!latestAuth.isAuthenticated) {
+      router.push('/checkout/register?redirect=/checkout');
       return;
     }
+
     router.push('/checkout');
   };
 
