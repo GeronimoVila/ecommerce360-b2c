@@ -15,7 +15,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/checkout', request.url));
   }
 
-  if (pathname.startsWith('/mis-compras') && !hasActiveSession) {
+  if (
+    (pathname.startsWith('/mis-compras') || pathname.startsWith('/mi-cuenta')) &&
+    !hasActiveSession
+  ) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -23,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/checkout/:path*', '/mis-compras/:path*'],
+  matcher: ['/checkout/:path*', '/mis-compras/:path*', '/mi-cuenta/:path*'],
 };

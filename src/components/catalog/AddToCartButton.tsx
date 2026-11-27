@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { ShoppingCart, ShoppingBag, Check } from 'lucide-react';
 import { useCartStore } from '@/src/store/cartStore';
 
 export interface AddToCartProps {
@@ -8,55 +9,67 @@ export interface AddToCartProps {
   quantity: number;
   maxStock: number;
   disabled?: boolean;
+  variant?: 'default' | 'combo';
+  label?: string;
 }
 
-export default function AddToCartButton({ productId, quantity, maxStock, disabled }: AddToCartProps) {
+export default function AddToCartButton({
+  productId,
+  quantity,
+  maxStock,
+  disabled,
+  variant = 'default',
+  label,
+}: AddToCartProps) {
   const addItem = useCartStore((state) => state.addItem);
   const isSyncing = useCartStore((state) => state.isSyncing);
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAdd = () => {
-    if (quantity > maxStock) {
-      console.warn('Intento de vulneración de stock bloqueado por exceso de cantidad.');
-      return;
-    }
+    if (quantity > maxStock || maxStock <= 0) return;
 
-    if (maxStock <= 0) {
-      return;
-    }
-
-    addItem({
-      productId,
-      quantity,
-    });
-
+    addItem({ productId, quantity });
     setIsAdded(true);
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 1500);
+    setTimeout(() => setIsAdded(false), 1500);
   };
 
   const isDisabled = disabled || maxStock <= 0 || isSyncing;
+  const defaultLabel = variant === 'combo' ? 'Comprar Combo' : 'Agregar al Carrito';
+
+  const colorClasses = isDisabled
+    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+    : isAdded
+    ? 'bg-[#00A859] text-white'
+    : variant === 'combo'
+    ? 'bg-[#EA580C] hover:bg-orange-700 text-white'
+    : 'bg-[#0056D2] hover:bg-blue-700 text-white';
 
   return (
-    <button 
+    <button
+      type="button"
       onClick={handleAdd}
       disabled={isDisabled}
-      className={`w-full py-3 px-4 rounded font-medium text-white transition-all duration-200 shadow-sm ${
-        isDisabled 
-          ? 'bg-gray-400 cursor-not-allowed' 
-          : isAdded
-            ? 'bg-green-600 hover:bg-green-700'
-            : 'bg-blue-600 hover:bg-blue-700'
-      }`}
+      className={`w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shadow-2xs inline-flex items-center justify-center gap-2 cursor-pointer ${colorClasses}`}
     >
-      {isDisabled 
-        ? 'Sin Stock' 
-        : isAdded 
-          ? '✓ ¡Agregado al Carrito!' 
-          : isSyncing 
-            ? 'Sincronizando...' 
-            : 'Agregar al Carrito'}
+      {isDisabled ? (
+        <span>Sin Stock</span>
+      ) : isAdded ? (
+        <>
+          <Check className="w-4 h-4" />
+          <span>¡Agregado!</span>
+        </>
+      ) : isSyncing ? (
+        <span>Sincronizando...</span>
+      ) : (
+        <>
+          {variant === 'combo' ? (
+            <ShoppingBag className="w-4 h-4" />
+          ) : (
+            <ShoppingCart className="w-4 h-4" />
+          )}
+          <span>{label || defaultLabel}</span>
+        </>
+      )}
     </button>
   );
 }

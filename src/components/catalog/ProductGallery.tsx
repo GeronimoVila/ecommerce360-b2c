@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { ImageOff } from 'lucide-react';
 import type { ProductImage } from '@/src/types/product';
 
 interface ProductGalleryProps {
@@ -19,8 +20,9 @@ export default function ProductGallery({ images = [], productName }: ProductGall
 
   if (orderedImages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center w-full bg-gray-100 rounded-lg aspect-square border border-gray-200">
-        <span className="text-xl font-medium text-gray-400">Sin Imagen Disponible</span>
+      <div className="flex flex-col items-center justify-center w-full bg-white rounded-2xl aspect-square border border-gray-200/90 shadow-xs text-gray-400 gap-2">
+        <ImageOff className="w-10 h-10 text-gray-300" />
+        <span className="text-sm font-semibold">Sin Imagen Disponible</span>
       </div>
     );
   }
@@ -28,15 +30,15 @@ export default function ProductGallery({ images = [], productName }: ProductGall
   const activeImage = orderedImages[selectedIndex] || orderedImages[0];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative w-full overflow-hidden bg-white border border-gray-200 rounded-xl aspect-square shadow-sm">
+    <div className="flex flex-col gap-3.5">
+      <div className="relative w-full overflow-hidden bg-white border border-gray-200/90 rounded-2xl aspect-square shadow-xs">
         <Image
           src={activeImage.url}
           alt={activeImage.alt_text || productName}
           fill
           priority
           sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-contain p-2 transition-opacity duration-200"
+          className="object-contain p-4 sm:p-6 transition-opacity duration-200"
         />
       </div>
 
@@ -50,10 +52,10 @@ export default function ProductGallery({ images = [], productName }: ProductGall
                 type="button"
                 onClick={() => setSelectedIndex(idx)}
                 aria-label={`Ver imagen ${idx + 1} de ${productName}`}
-                className={`relative overflow-hidden rounded-lg aspect-square border-2 bg-white transition-all ${
+                className={`relative overflow-hidden rounded-xl aspect-square border-2 bg-white transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-blue-600 ring-2 ring-blue-600/20'
-                    : 'border-gray-200 opacity-75 hover:opacity-100 hover:border-gray-300'
+                    ? 'border-[#0056D2] ring-2 ring-blue-500/20'
+                    : 'border-gray-200/90 opacity-75 hover:opacity-100 hover:border-gray-300'
                 }`}
               >
                 <Image
@@ -61,7 +63,7 @@ export default function ProductGallery({ images = [], productName }: ProductGall
                   alt={img.alt_text || `${productName} - vista ${idx + 1}`}
                   fill
                   sizes="96px"
-                  className="object-cover"
+                  className="object-contain p-1"
                 />
               </button>
             );

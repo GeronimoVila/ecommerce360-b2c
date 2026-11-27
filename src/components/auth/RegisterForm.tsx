@@ -3,6 +3,16 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import {
+  UserPlus,
+  AlertCircle,
+  Loader2,
+  ArrowRight,
+  Lock,
+  Mail,
+  Phone,
+  CreditCard,
+} from 'lucide-react';
 import { authService } from '@/src/services/auth.service';
 import { useAuthStore } from '@/src/store/authStore';
 import { useCartStore } from '@/src/store/cartStore';
@@ -39,8 +49,15 @@ export default function RegisterForm() {
     const last_name = getFormString(formData, 'last_name');
     const email = getFormString(formData, 'email');
     const phone = getFormString(formData, 'phone');
+    const dni = getFormString(formData, 'dni').replace(/\D/g, '');
     const password = String(formData.get('password') ?? '');
     const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+    if (dni.length < 7 || dni.length > 11) {
+      setError('Ingresá un DNI válido (solo números, entre 7 y 11 dígitos).');
+      setLoading(false);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden.');
@@ -54,6 +71,7 @@ export default function RegisterForm() {
         last_name,
         email,
         phone,
+        dni,
         password,
         rememberMe: true,
       });
@@ -110,60 +128,174 @@ export default function RegisterForm() {
     : '/login';
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-6 bg-white shadow rounded-lg">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Crear cuenta</h2>
-
-      {error && <div className="p-3 text-sm text-red-700 bg-red-100 rounded">{error}</div>}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Nombre</label>
-          <input name="first_name" type="text" required className="w-full mt-1 border-gray-300 rounded-md p-2 border" />
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white p-6 sm:p-8 rounded-2xl shadow-xs border border-gray-200/90 space-y-5"
+    >
+      <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+        <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0056D2] flex items-center justify-center shrink-0">
+          <UserPlus className="w-4 h-4" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Apellido</label>
-          <input name="last_name" type="text" required className="w-full mt-1 border-gray-300 rounded-md p-2 border" />
+          <h2 className="text-base sm:text-lg font-extrabold text-gray-950">
+            Datos de Registro
+          </h2>
+          <p className="text-xs text-gray-500">
+            Todos los campos son obligatorios para habilitar tu cuenta.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 p-3.5 text-xs sm:text-sm text-red-900 bg-red-50 border border-red-200 rounded-xl"
+        >
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <span className="font-medium">{error}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Nombre *</label>
+          <input
+            name="first_name"
+            type="text"
+            required
+            placeholder="Ej. Juan"
+            className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Apellido *</label>
+          <input
+            name="last_name"
+            type="text"
+            required
+            placeholder="Ej. Pérez"
+            className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+            DNI / Documento *
+          </label>
+          <div className="relative">
+            <CreditCard className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              name="dni"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{7,11}"
+              maxLength={11}
+              placeholder="Ej. 35123456"
+              required
+              className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl pl-10 pr-3.5 py-2.5 text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+            WhatsApp / Teléfono *
+          </label>
+          <div className="relative">
+            <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              name="phone"
+              type="tel"
+              required
+              placeholder="Ej. 264 555 1234"
+              className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+            />
+          </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Email</label>
-        <input name="email" type="email" required className="w-full mt-1 border-gray-300 rounded-md p-2 border" />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-        <input name="phone" type="tel" required className="w-full mt-1 border-gray-300 rounded-md p-2 border" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-          <input name="password" type="password" minLength={8} required className="w-full mt-1 border-gray-300 rounded-md p-2 border" />
+        <label className="block text-xs font-bold text-gray-700 mb-1.5">
+          Correo Electrónico *
+        </label>
+        <div className="relative">
+          <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            name="email"
+            type="email"
+            required
+            placeholder="tu@email.com"
+            className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+          />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Repetir Contraseña</label>
-          <input name="confirmPassword" type="password" minLength={8} required className="w-full mt-1 border-gray-300 rounded-md p-2 border" />
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+            Contraseña *
+          </label>
+          <div className="relative">
+            <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              name="password"
+              type="password"
+              minLength={8}
+              required
+              placeholder="Mín. 8 caracteres"
+              className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+            Repetir Contraseña *
+          </label>
+          <div className="relative">
+            <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              name="confirmPassword"
+              type="password"
+              minLength={8}
+              required
+              placeholder="Repetí la clave"
+              className="w-full bg-gray-100/80 border border-gray-200/90 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#0056D2] focus:ring-2 focus:ring-blue-500/15 outline-none transition-all"
+            />
+          </div>
         </div>
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 px-4 mt-4 text-white bg-blue-600 hover:bg-blue-700 rounded-md font-medium disabled:bg-gray-400 transition-colors"
+        className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 mt-2 rounded-xl text-sm font-bold text-white bg-[#0056D2] hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-xs transition-all cursor-pointer disabled:cursor-not-allowed"
       >
-        {loading
-          ? 'Creando cuenta...'
-          : redirectTarget
-          ? 'Crear Cuenta y Continuar al Pago'
-          : 'Crear Cuenta y Pagar'}
+        {loading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Creando cuenta...</span>
+          </>
+        ) : (
+          <>
+            <span>
+              {redirectTarget ? 'Crear Cuenta y Continuar al Pago' : 'Crear Cuenta y Continuar'}
+            </span>
+            <ArrowRight className="w-4 h-4" />
+          </>
+        )}
       </button>
 
-      <div className="text-center mt-4">
-        <p className="text-sm text-gray-600">
-          ¿Ya tienes cuenta?{' '}
-          <Link href={loginHref} className="font-medium text-blue-600 hover:text-blue-500 underline">
-            Inicia sesión
+      <div className="pt-4 border-t border-gray-100 text-center">
+        <p className="text-xs sm:text-sm text-gray-600">
+          ¿Ya tenés cuenta?{' '}
+          <Link
+            href={loginHref}
+            className="font-bold text-[#0056D2] hover:text-blue-800 hover:underline"
+          >
+            Iniciá sesión
           </Link>
         </p>
       </div>

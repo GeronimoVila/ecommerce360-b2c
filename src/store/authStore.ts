@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authService } from '../services/auth.service';
+import { useCartStore } from './cartStore';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -23,7 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       } else {
         set({ isAuthenticated: false, user: null, isChecking: false });
       }
-    } catch (error) {
+    } catch {
       set({ isAuthenticated: false, user: null, isChecking: false });
     }
   },
@@ -33,9 +34,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     try {
       await authService.logout();
-      set({ isAuthenticated: false, user: null });
     } catch (error) {
       console.error('Error en logout:', error);
+    } finally {
+      useCartStore.getState().clearCart();
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('ecommerce360-cart');
+      }
+      set({ isAuthenticated: false, user: null, isChecking: false });
     }
-  }
+  },
 }));

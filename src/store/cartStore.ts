@@ -1,13 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { coreFetch } from '../lib/apiClient';
+import { DynamicPricing } from '../types/product';
+
+export type CheckoutPaymentMethod = 'MOBBEX' | 'MP' | 'TRANSFERENCIA';
 
 export interface CartItem {
   productId: string;
   name: string;
+  basePrice?: number;
   unitPrice: number;
+  discountPercentage?: number;
+  interestPercentage?: number;
   quantity: number;
+  itemTotal?: number;
   availableStock?: number;
+  dynamicPricing?: DynamicPricing;
   imageUrl?: string | null;
   error?: string;
 }
@@ -21,7 +29,10 @@ interface CouponState {
 
 interface CartState {
   items: CartItem[];
+  baseSubtotal: number;
   subtotal: number;
+  paymentMethod: CheckoutPaymentMethod;
+  installments: number;
   coupon: CouponState | null;
   isSyncing: boolean;
   isDrawerOpen: boolean;
@@ -29,6 +40,7 @@ interface CartState {
   addItem: (item: Omit<CartItem, 'unitPrice' | 'name'>) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  setPaymentOption: (paymentMethod: CheckoutPaymentMethod, installments?: number) => void;
   clearCart: () => void;
   syncWithBackend: () => Promise<void>;
   applyCoupon: (code: string) => Promise<boolean>;
@@ -43,7 +55,10 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      baseSubtotal: 0,
       subtotal: 0,
+      paymentMethod: 'MOBBEX',
+      installments: 1,
       coupon: null,
       isSyncing: false,
       isDrawerOpen: false,
@@ -84,12 +99,30 @@ export const useCartStore = create<CartState>()(
         get().syncWithBackend();
       },
 
-      clearCart: () => set({ items: [], subtotal: 0, coupon: null }),
+      setPaymentOption: (paymentMethod, installments = 1) => {
+        const normalizedInstallments = paymentMethod === 'TRANSFERENCIA' ? 1 : Math.max(1, installments);
+        set({ paymentMethod, installments: normalizedInstallments });
+        get().syncWithBackend();
+      },
+
+      clearCart: () => {
+        syncRequestId += 1;
+        set({
+          items: [],
+          baseSubtotal: 0,
+          subtotal: 0,
+          coupon: null,
+          paymentMethod: 'MOBBEX',
+          installments: 1,
+          isSyncing: false,
+          isDrawerOpen: false,
+        });
+      },
 
       syncWithBackend: async () => {
-        const { items, coupon } = get();
+        const { items, coupon, paymentMethod, installments } = get();
         if (items.length === 0) {
-          set({ subtotal: 0, coupon: null, isSyncing: false });
+          set({ baseSubtotal: 0, subtotal: 0, coupon: null, isSyncing: false });
           return;
         }
 
@@ -99,24 +132,37 @@ export const useCartStore = create<CartState>()(
         try {
           const payload = items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
 
-          const response = await coreFetch<{ success: boolean; subtotal: number; items: CartItem[] }>(
-            '/api/v1/checkout/cart/sync',
-            { method: 'POST', body: JSON.stringify({ items: payload }) }
-          );
+          const response = await coreFetch<{
+            success: boolean;
+            baseSubtotal?: number;
+            subtotal: number;
+            items: CartItem[];
+          }>('/api/v1/checkout/cart/sync', {
+            method: 'POST',
+            body: JSON.stringify({
+              items: payload,
+              paymentMethod,
+              installments,
+            }),
+          });
 
           if (currentRequestId !== syncRequestId) return;
 
-          if (response.success) {
-            set({ items: response.items, subtotal: response.subtotal });
+          set({
+            items: response.items,
+            baseSubtotal: response.baseSubtotal ?? response.subtotal,
+            subtotal: response.subtotal,
+          });
 
-            if (coupon) {
+          if (response.success && coupon) {
+            try {
               const couponValid = await get().applyCoupon(coupon.code);
               if (!couponValid) {
                 set({ coupon: null });
               }
+            } catch {
+              set({ coupon: null });
             }
-          } else {
-            set({ items: response.items, subtotal: response.subtotal });
           }
         } catch (error) {
           console.error('Error sincronizando carrito:', error);
@@ -156,7 +202,14 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'ecommerce360-cart',
-      partialize: (state) => ({ items: state.items, subtotal: state.subtotal, coupon: state.coupon }),
+      partialize: (state) => ({
+        items: state.items,
+        baseSubtotal: state.baseSubtotal,
+        subtotal: state.subtotal,
+        paymentMethod: state.paymentMethod,
+        installments: state.installments,
+        coupon: state.coupon,
+      }),
     }
   )
 );

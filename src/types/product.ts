@@ -13,10 +13,17 @@ export interface ProductImage {
   is_primary: boolean;
 }
 
+export interface TechnicalSpecItem {
+  key: string;
+  value: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
   name: string;
+  description?: string | null;
+  technical_specs?: TechnicalSpecItem[] | null;
   base_price: string | number;
   physical_stock: number;
   is_combo: boolean;

@@ -1,9 +1,18 @@
 import { coreFetch } from '../lib/apiClient';
 
+export interface CustomerProfileData {
+  id: string;
+  dni: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
   role: 'ADMIN' | 'SELLER' | 'CUSTOMER' | 'LOGISTICS';
+  customer_profile?: CustomerProfileData | null;
 }
 
 export interface AuthResponse {
@@ -24,6 +33,7 @@ interface RegisterPayload {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  dni: string;
   rememberMe?: boolean;
 }
 
@@ -37,6 +47,7 @@ export const authService = {
         first_name: data.first_name,
         last_name: data.last_name,
         phone: data.phone,
+        dni: data.dni,
       }),
     });
 
