@@ -85,6 +85,13 @@ export default function CheckoutPage() {
   const [hasPrefilledUser, setHasPrefilledUser] = useState(false);
 
   useEffect(() => {
+    if (!auth || auth.isChecking) return;
+    if (!auth.isAuthenticated) {
+      router.replace('/checkout/register?redirect=/checkout');
+    }
+  }, [auth, router]);
+
+  useEffect(() => {
     if (!cart) return;
     cart.syncWithBackend();
   }, [Boolean(cart)]);
@@ -160,12 +167,16 @@ export default function CheckoutPage() {
     return null;
   }, [cart]);
 
-  if (!cart) {
+  if (!cart || !auth || auth.isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <Loader2 className="w-8 h-8 text-[#0056D2] animate-spin" />
       </div>
     );
+  }
+
+  if (!auth.isAuthenticated) {
+    return null;
   }
 
   if (cart.items.length === 0 && !isSubmitting) {
